@@ -1,14 +1,25 @@
 [package]
 name = "lab-os"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 
+# Just one build-dependencies section
 [build-dependencies]
 bootloader = { version = "0.11", default-features = false, features = ["uefi"] }
 kernel = { path = "kernel", artifact = "bin", target = "x86_64-unknown-none"}
 
 [dependencies]
-ovmf-prebuilt = "0.2.1"
+bootloader = { version = "0.11", default-features = false, features = ["uefi"] }
+ovmf-prebuilt = { version = "0.2.1", default-features = false }
 
 [workspace]
-members = [ "kernel" ]
+members = [
+    "kernel",
+    "."
+]
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
