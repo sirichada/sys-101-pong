@@ -188,7 +188,7 @@ impl PongGame {
             }
         }
         
-        // Computer paddle - using corrected_ball_y
+        // Computer paddle
         if (new_ball_x + self.ball_size as isize) >= self.computer_paddle_x as isize && 
            new_ball_x <= (self.computer_paddle_x + self.computer_paddle_width) as isize &&
            corrected_ball_y + self.ball_size as isize >= self.computer_paddle_y as isize && 
