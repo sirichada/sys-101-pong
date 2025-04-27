@@ -1,3 +1,8 @@
+# how to run
+
+1. chmod +x run.sh
+2. ./run.sh
+
 # Bare Metal Starter
 
 This is a starting implementation for a simple bare metal kernel for x86-64 architecture. The implementation is based on [rust-osdev/bootloader](https://github.com/rust-osdev/bootloader) crate,
