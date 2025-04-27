@@ -106,6 +106,11 @@ impl ScreenWriter {
     }
 
     pub fn write_pixel(&mut self, x: usize, y: usize, intensity: u8) {
+        // Check if coordinates are within screen bounds
+        if x >= self.width() || y >= self.height() {
+            return; // Skip drawing if coordinates are out of bounds
+        }
+        
         let pixel_offset = y * usize::from(self.info.stride) + x;
         let color = match self.info.pixel_format {
             PixelFormat::Rgb => [intensity / 4, intensity, intensity / 2, 0],
@@ -119,12 +124,23 @@ impl ScreenWriter {
         };
         let bytes_per_pixel = self.info.bytes_per_pixel;
         let byte_offset = pixel_offset * usize::from(bytes_per_pixel);
+        
+        // Add an additional bounds check on the calculated byte_offset
+        if byte_offset + usize::from(bytes_per_pixel) > self.framebuffer.len() {
+            return; // Prevent buffer overflow
+        }
+        
         self.framebuffer[byte_offset..(byte_offset + usize::from(bytes_per_pixel))]
             .copy_from_slice(&color[..usize::from(bytes_per_pixel)]);
         let _ = unsafe { ptr::read_volatile(&self.framebuffer[byte_offset]) };
     }
 
     pub fn draw_pixel(&mut self, x: usize, y: usize, r: u8, g: u8, b: u8) {
+        // Check if coordinates are within screen bounds
+        if x >= self.width() || y >= self.height() {
+            return; // Skip drawing if coordinates are out of bounds
+        }
+        
         let pixel_offset = y * usize::from(self.info.stride) + x;
         let color = match self.info.pixel_format {
             PixelFormat::Rgb => [r, g, b, 0],
@@ -138,6 +154,12 @@ impl ScreenWriter {
         };
         let bytes_per_pixel = self.info.bytes_per_pixel;
         let byte_offset = pixel_offset * usize::from(bytes_per_pixel);
+        
+        // Add an additional bounds check on the calculated byte_offset
+        if byte_offset + usize::from(bytes_per_pixel) > self.framebuffer.len() {
+            return; // Prevent buffer overflow
+        }
+        
         self.framebuffer[byte_offset..(byte_offset + usize::from(bytes_per_pixel))]
             .copy_from_slice(&color[..usize::from(bytes_per_pixel)]);
         let _ = unsafe { ptr::read_volatile(&self.framebuffer[byte_offset]) };

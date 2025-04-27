@@ -87,9 +87,9 @@ fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
 }
 
 fn start() {
-    writeln!(Writer, "Welcome to Pong OS!").unwrap();
-    writeln!(Writer, "Use Up/Down arrows to move your paddle").unwrap();
-    writeln!(Writer, "First to 5 points wins!").unwrap();
+    writeln!(serial(), "Welcome to Pong OS!").unwrap();
+    writeln!(serial(), "Use Up/Down arrows to move your paddle").unwrap();
+    writeln!(serial(), "First to 5 points wins!").unwrap();
     
     // Initial render of the game using raw pointer
     unsafe {

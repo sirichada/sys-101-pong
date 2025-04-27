@@ -152,41 +152,53 @@ impl PongGame {
         self.player_position_history[self.history_index] = self.player_paddle_y;
         self.history_index = (self.history_index + 1) % self.player_position_history.len();
         
-        // Update ball position
+        // Calculate new ball position
         let new_ball_x = self.ball_x as isize + self.ball_velocity_x;
         let new_ball_y = self.ball_y as isize + self.ball_velocity_y;
         
-        // Check top and bottom collisions
-        if new_ball_y <= 0 || new_ball_y + self.ball_size as isize >= self.height as isize {
-            self.ball_velocity_y = -self.ball_velocity_y;
+        // Check top and bottom collisions - IMPROVED BOUNDARY CHECKING
+        let top_boundary: isize = 0;
+        let bottom_boundary: isize = (self.height - self.ball_size) as isize;
+        
+        // Handle vertical collisions with improved boundary checking
+        let mut corrected_ball_y = new_ball_y;
+        
+        if new_ball_y <= top_boundary {
+            // Ball hit the top - bounce and correct position
+            self.ball_velocity_y = self.ball_velocity_y.abs(); // Force positive (downward) velocity
+            corrected_ball_y = top_boundary; // Clamp to top boundary
+        } else if new_ball_y >= bottom_boundary {
+            // Ball hit the bottom - bounce and correct position
+            self.ball_velocity_y = -self.ball_velocity_y.abs(); // Force negative (upward) velocity
+            corrected_ball_y = bottom_boundary; // Clamp to bottom boundary
         }
         
-        // Check paddle collisions
+        // Remaining collision detection logic for paddles
         // Player paddle
         if new_ball_x <= (self.player_paddle_x + self.player_paddle_width) as isize && 
            new_ball_x >= self.player_paddle_x as isize &&
-           new_ball_y + self.ball_size as isize >= self.player_paddle_y as isize && 
-           new_ball_y <= (self.player_paddle_y + self.player_paddle_height) as isize {
+           corrected_ball_y + self.ball_size as isize >= self.player_paddle_y as isize && 
+           corrected_ball_y <= (self.player_paddle_y + self.player_paddle_height) as isize {
             self.ball_velocity_x = -self.ball_velocity_x;
             // Add a little bit of spin based on where the ball hits the paddle
-            let relative_intersect_y = (self.player_paddle_y as isize + (self.player_paddle_height as isize / 2)) - (new_ball_y + (self.ball_size as isize / 2));
-            self.ball_velocity_y = -relative_intersect_y / 5;  // Increased spin effect from /10 to /5
+            let relative_intersect_y = (self.player_paddle_y as isize + (self.player_paddle_height as isize / 2)) - (corrected_ball_y + (self.ball_size as isize / 2));
+            self.ball_velocity_y = -relative_intersect_y / 5;
             if self.ball_velocity_y == 0 {
-                self.ball_velocity_y = if new_ball_y % 2 == 0 { 3 } else { -3 };  // Increased from 1 to 3
+                self.ball_velocity_y = if corrected_ball_y % 2 == 0 { 3 } else { -3 };
             }
         }
         
-        // Computer paddle
+        // Computer paddle - using corrected_ball_y
         if (new_ball_x + self.ball_size as isize) >= self.computer_paddle_x as isize && 
            new_ball_x <= (self.computer_paddle_x + self.computer_paddle_width) as isize &&
-           new_ball_y + self.ball_size as isize >= self.computer_paddle_y as isize && 
-           new_ball_y <= (self.computer_paddle_y + self.computer_paddle_height) as isize {
+           corrected_ball_y + self.ball_size as isize >= self.computer_paddle_y as isize && 
+           corrected_ball_y <= (self.computer_paddle_y + self.computer_paddle_height) as isize {
             self.ball_velocity_x = -self.ball_velocity_x;
             // Add a little bit of spin based on where the ball hits the paddle
-            let relative_intersect_y = (self.computer_paddle_y as isize + (self.computer_paddle_height as isize / 2)) - (new_ball_y + (self.ball_size as isize / 2));
-            self.ball_velocity_y = -relative_intersect_y / 5;  // Increased from /10 to /5
+            let relative_intersect_y = (self.computer_paddle_y as isize + (self.computer_paddle_height as isize / 2)) - (corrected_ball_y + (self.ball_size as isize / 2));
+            self.ball_velocity_y = -relative_intersect_y / 5;
             if self.ball_velocity_y == 0 {
-                self.ball_velocity_y = if new_ball_y % 2 == 0 { 3 } else { -3 };  // Increased from 1 to 3
+                self.ball_velocity_y = if corrected_ball_y % 2 == 0 { 3 } else { -3 };
             }
         }
         
@@ -200,31 +212,37 @@ impl PongGame {
             self.player_score += 1;
             self.reset();
         } else {
-            // Update ball position
-            self.ball_x = new_ball_x as usize;
-            self.ball_y = new_ball_y as usize;
+            // Update ball position (using corrected values for y)
+            self.ball_x = new_ball_x.clamp(0, (self.width - self.ball_size) as isize) as usize;
+            self.ball_y = corrected_ball_y.clamp(0, (self.height - self.ball_size) as isize) as usize;
         }
         
-        // Check for game over condition (first to 5 points wins)
+        // Check for game over condition
         if self.player_score >= 5 || self.computer_score >= 5 {
             self.game_over = true;
         }
         
-        // Update computer paddle to follow player with delay
-        // Get the position from 15 frames ago (half the history buffer)
-        let delay_frames = 15;
-        let delayed_index = (self.history_index + self.player_position_history.len() - delay_frames) % self.player_position_history.len();
-        let target_position = self.player_position_history[delayed_index];
+        // Computer AI logic - using corrected ball position
+        let target_y = if self.ball_velocity_x > 0 && self.ball_x > self.width / 2 {
+            // Ball is moving toward computer and in computer's half - track the ball
+            self.ball_y.saturating_sub(self.computer_paddle_height / 2)
+        } else {
+            // Ball is moving away or in player's half - return to center position
+            self.height / 2 - self.computer_paddle_height / 2
+        };
         
-        // Move computer paddle toward the delayed player position
-        if self.computer_paddle_y + (self.computer_paddle_height / 2) < target_position + (self.computer_paddle_height / 2) {
+        // Move computer paddle towards the target position
+        let computer_paddle_center = self.computer_paddle_y + self.computer_paddle_height / 2;
+        let target_center = target_y + self.computer_paddle_height / 2;
+        
+        if computer_paddle_center < target_center {
             // Move down
             if self.computer_paddle_y + self.computer_paddle_height + self.computer_paddle_speed < self.height {
                 self.computer_paddle_y += self.computer_paddle_speed;
             } else {
                 self.computer_paddle_y = self.height - self.computer_paddle_height;
             }
-        } else if self.computer_paddle_y + (self.computer_paddle_height / 2) > target_position + (self.computer_paddle_height / 2) {
+        } else if computer_paddle_center > target_center {
             // Move up
             if self.computer_paddle_y > self.computer_paddle_speed {
                 self.computer_paddle_y -= self.computer_paddle_speed;
